@@ -1,2 +1,2 @@
 # Mini Proyecto Breakout
-# Bravo, Ledesma, Pacheco, Roldan.
+  Bravo, Ledesma, Pacheco, Roldan.
