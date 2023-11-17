@@ -95,4 +95,3 @@ mover_pelota()
 
 # Agregar estas líneas para ejecutar el juego
 ventana.mainloop()
-nashe
