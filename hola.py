@@ -1,9 +1,8 @@
 import tkinter as tk
 import random
-import time
 
 ANCHO_CANVAS = 400
-ALTO_CANVAS = 300
+ALTO_CANVAS = 500
 TAM_BLOQUE = 40
 
 class JuegoBreakout:
@@ -20,18 +19,21 @@ class JuegoBreakout:
         self.bloques = []
         self.crear_bloques()
 
-        self.paleta = self.canvas.create_rectangle(ANCHO_CANVAS / 2 - 50, ALTO_CANVAS - 10, ANCHO_CANVAS / 2 + 50, ALTO_CANVAS - 5, fill="white")
+        self.paleta = self.canvas.create_rectangle(ANCHO_CANVAS / 2 - 50, ALTO_CANVAS - 20, ANCHO_CANVAS / 2 + 50, ALTO_CANVAS - 10, fill="white")
 
         self.pelota = self.canvas.create_oval(10, 10, 25, 25, fill="white")
         self.canvas.move(self.pelota, ANCHO_CANVAS / 2, ALTO_CANVAS / 2)
 
-        self.dx = 3
-        self.dy = -3
+        self.dx = 2.5
+        self.dy = -2.5
 
         self.canvas.bind_all("<KeyPress-Left>", self.mover_izquierda)
         self.canvas.bind_all("<KeyPress-Right>", self.mover_derecha)
+        self.canvas.bind_all("<KeyPress-space>", self.iniciar_juego)
 
         self.juego_iniciado = False
+        self.boton_reinicio = tk.Button(ventana, text="Reiniciar", command=self.reiniciar_juego)
+        self.boton_reinicio.pack()
 
     def crear_bloques(self):
         colores = ["red", "orange", "yellow", "green", "blue"]
@@ -65,13 +67,24 @@ class JuegoBreakout:
     def mover_pelota(self):
         if self.juego_iniciado:
             self.canvas.move(self.pelota, self.dx, self.dy)
-            pos = self.canvas.coords(self.pelota)
+            pos_pelota = self.canvas.coords(self.pelota)
+            pos_paleta = self.canvas.coords(self.paleta)
 
-            if pos[1] <= 0:
-                self.dy = -self.dy
+            if pos_pelota[1] <= 0:
+                self.dy = -self.dy  # Bounce off the top edge
 
-            if pos[0] <= 0 or pos[2] >= ANCHO_CANVAS:
-                self.dx = -self.dx
+            if pos_pelota[0] <= 0 or pos_pelota[2] >= ANCHO_CANVAS:
+                self.dx = -self.dx  # Bounce off the side edges
+
+            if pos_pelota[3] >= ALTO_CANVAS:
+                if pos_pelota[2] >= pos_paleta[0] and pos_pelota[0] <= pos_paleta[2] and pos_pelota[3] >= pos_paleta[1]:
+                    self.dy = -self.dy
+                else:
+                    self.ventana.after_cancel(self.mover_pelota)
+                    self.canvas.create_text(ANCHO_CANVAS / 2, ALTO_CANVAS / 2, text="¡Juego terminado!", fill="white", font=("Arial", 20))
+                    self.juego_iniciado = False
+                    self.dx = 0
+                    self.dy = 0
 
             for bloque in self.bloques:
                 if self.colision_pelota(bloque):
@@ -86,23 +99,32 @@ class JuegoBreakout:
                 self.ventana.after_cancel(self.mover_pelota)
                 self.canvas.create_text(ANCHO_CANVAS / 2, ALTO_CANVAS / 2, text="¡Has ganado!", fill="white", font=("Arial", 20))
 
-            if pos[3] >= ALTO_CANVAS:
-                self.ventana.after_cancel(self.mover_pelota)
-                self.canvas.create_text(ANCHO_CANVAS / 2, ALTO_CANVAS / 2, text="¡Juego terminado!", fill="white", font=("Arial", 20))
-
             self.ventana.after(10, self.mover_pelota)
 
     def colision_pelota(self, objeto):
-        pos = self.canvas.coords(self.pelota)
-        objeto_pos = self.canvas.coords(objeto)
-        return pos[2] >= objeto_pos[0] and pos[0] <= objeto_pos[2] and pos[3] >= objeto_pos[1] and pos[1] <= objeto_pos[3]
+        pos_pelota = self.canvas.coords(self.pelota)
+        pos_objeto = self.canvas.coords(objeto)
+        return pos_pelota[2] >= pos_objeto[0] and pos_pelota[0] <= pos_objeto[2] and pos_pelota[3] >= pos_objeto[1] and pos_pelota[1] <= pos_objeto[3]
 
-    def iniciar_juego(self):
-        self.juego_iniciado = True
-        self.mover_pelota()
+    def reiniciar_juego(self):
+        self.juego_iniciado = False
+        self.canvas.delete(tk.ALL)
+        self.puntos = 0
+        self.etiqueta_puntos.config(text=f"Puntos: {self.puntos}")
+        self.bloques = []
+        self.crear_bloques()
+        self.paleta = self.canvas.create_rectangle(ANCHO_CANVAS / 2 - 50, ALTO_CANVAS - 20, ANCHO_CANVAS / 2 + 50, ALTO_CANVAS - 10, fill="white")
+        self.pelota = self.canvas.create_oval(10, 10, 25, 25, fill="white")
+        self.canvas.move(self.pelota, ANCHO_CANVAS / 2, ALTO_CANVAS / 2)
+        self.dx = 3
+        self.dy = -3
+
+    def iniciar_juego(self, event):
+        if not self.juego_iniciado:
+            self.juego_iniciado = True
+            self.mover_pelota()
 
 if __name__ == "__main__":
     root = tk.Tk()
     juego = JuegoBreakout(root)
-    juego.iniciar_juego()
     root.mainloop()
