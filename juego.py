@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import simpledialog  # Importamos simpledialog
+from tkinter import simpledialog, ttk
 import random
 import sqlite3
 
@@ -11,11 +11,29 @@ class JuegoBreakout:
     def __init__(self, ventana):
         self.ventana = ventana
         self.ventana.title("Breakout")
-        self.canvas = tk.Canvas(ventana, width=ANCHO_CANVAS, height=ALTO_CANVAS, bg="black")
+
+        # Crear el contenedor de pestañas
+        self.notebook = ttk.Notebook(ventana)
+        self.notebook.pack(expand=1, fill="both")
+
+        # Crear la pestaña del juego
+        self.frame_juego = ttk.Frame(self.notebook)
+        self.notebook.add(self.frame_juego, text='Juego')
+        self.inicializar_juego()
+
+        # Crear la pestaña de los mejores puntajes
+        self.frame_mejores_puntajes = ttk.Frame(self.notebook)
+        self.notebook.add(self.frame_mejores_puntajes, text='Mejores Puntajes')
+
+        # Configurar el evento de cambio de pestaña
+        self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
+
+    def inicializar_juego(self):
+        self.canvas = tk.Canvas(self.frame_juego, width=ANCHO_CANVAS, height=ALTO_CANVAS, bg="black")
         self.canvas.pack()
 
         self.puntos = 0
-        self.etiqueta_puntos = tk.Label(ventana, text=f"Puntos: {self.puntos}", fg="white", bg="black")
+        self.etiqueta_puntos = tk.Label(self.frame_juego, text=f"Puntos: {self.puntos}", fg="white", bg="black")
         self.etiqueta_puntos.pack()
 
         self.bloques = []
@@ -31,10 +49,10 @@ class JuegoBreakout:
 
         self.canvas.bind_all("<KeyPress-Left>", self.mover_izquierda)
         self.canvas.bind_all("<KeyPress-Right>", self.mover_derecha)
-        self.canvas.bind_all("<space>", self.iniciar_juego)  # Cambiamos la tecla a "space"
+        self.canvas.bind_all("<space>", self.iniciar_juego)
 
         self.juego_iniciado = False
-        self.boton_reinicio = tk.Button(ventana, text="Reiniciar", command=self.reiniciar_juego)
+        self.boton_reinicio = tk.Button(self.frame_juego, text="Reiniciar", command=self.reiniciar_juego)
         self.boton_reinicio.pack()
 
     def crear_bloques(self):
@@ -73,16 +91,16 @@ class JuegoBreakout:
             pos_paleta = self.canvas.coords(self.paleta)
 
             if pos_pelota[1] <= 0:
-                self.dy = -self.dy  # Bounce off the top edge
+                self.dy = -self.dy
 
             if pos_pelota[0] <= 0 or pos_pelota[2] >= ANCHO_CANVAS:
-                self.dx = -self.dx  # Bounce off the side edges
+                self.dx = -self.dx
 
             if pos_pelota[3] >= ALTO_CANVAS:
                 if pos_pelota[2] >= pos_paleta[0] and pos_pelota[0] <= pos_paleta[2] and pos_pelota[3] >= pos_paleta[1]:
                     self.dy = -self.dy
                 else:
-                    self.registrar_puntaje()  # Llamamos a la función para registrar el puntaje
+                    self.registrar_puntaje()
                     self.ventana.after_cancel(self.mover_pelota)
                     self.canvas.create_text(ANCHO_CANVAS / 2, ALTO_CANVAS / 2, text="¡Juego terminado!", fill="white", font=("Arial", 20))
                     self.juego_iniciado = False
@@ -99,9 +117,7 @@ class JuegoBreakout:
                     break
 
             if len(self.bloques) == 0:
-                self.registrar_puntaje()  # Llamamos a la función para registrar el puntaje
-                self.ventana.after_cancel(self.mover_pelota)
-                self.canvas.create_text(ANCHO_CANVAS / 2, ALTO_CANVAS / 2, text="¡Has ganado!", fill="white", font=("Arial", 20))
+                self.crear_bloques()  # Crear nuevos bloques cuando todos son eliminados
 
             self.ventana.after(10, self.mover_pelota)
 
@@ -141,6 +157,32 @@ class JuegoBreakout:
         if nombre:
             self.guardar_puntaje(nombre, self.puntos)
 
+    def on_tab_change(self, event):
+        # Si cambia a la pestaña de los mejores puntajes, actualizar los puntajes
+        if self.notebook.index(self.notebook.select()) == 1:
+            self.mostrar_mejores_puntajes()
+
+    def mostrar_mejores_puntajes(self):
+        conexion = sqlite3.connect('puntajes.db')
+        cursor = conexion.cursor()
+
+        cursor.execute("SELECT Nombre, Puntaje FROM Puntajes ORDER BY Puntaje DESC LIMIT 10")
+        resultados = cursor.fetchall()
+
+        conexion.close()
+
+        # Limpiar la pestaña antes de mostrar nuevos puntajes
+        for widget in self.frame_mejores_puntajes.winfo_children():
+            widget.destroy()
+
+        # Crear una etiqueta para mostrar los resultados
+        etiqueta_resultados = tk.Label(self.frame_mejores_puntajes, text="Mejores Puntajes:")
+        etiqueta_resultados.pack()
+
+        # Mostrar los resultados en la pestaña
+        for nombre, puntaje in resultados:
+            etiqueta = tk.Label(self.frame_mejores_puntajes, text=f"{nombre}: {puntaje}")
+            etiqueta.pack()
 
 if __name__ == "__main__":
     root = tk.Tk()
